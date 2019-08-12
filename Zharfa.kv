@@ -1,0 +1,78 @@
+#:kivy 1.11.1
+#: set BACKGROUND_COLOR (40/255.0, 44/255.0, 52/255.0, 1)
+#: set ACTIVITY_BAR_COLOR (51/255.0, 56/255.0, 66/255.0, 1)
+#: set ACTIVITY_BAR_WIDTH 50
+
+<CameraClick>:
+    # orientation: 'vertical'
+
+    FloatLayout:
+        canvas:
+            Color:
+                rgba: BACKGROUND_COLOR
+            Rectangle:
+                size: root.size
+
+        RelativeLayout:
+            size_hint: None, 1
+            width : ACTIVITY_BAR_WIDTH
+            canvas:
+                Color:
+                    rgba: ACTIVITY_BAR_COLOR
+                Rectangle:
+                    size: self.size
+
+        RelativeLayout:
+            size_hint: 0.5, 1
+            pos: ACTIVITY_BAR_WIDTH, 0
+
+            Image:
+                id: camera
+                color: (1,1,1,1)
+                source: './images/facelogo09-01.png'
+                size_hint: 1, 0.5
+                pos: 0, self.parent.size[1]/2
+            ToggleButton:
+                id: play
+                size_hint: None, None
+                size: 100, 50
+                pos: 0, 100
+                text: 'Play'
+            Button:
+                size_hint: None, None
+                size: 100, 50
+                pos: 0, 0
+                text: 'Capture'
+                on_press: root.capture()
+
+        GridLayout:
+            size_hint: 0.5, 1
+            # # size: 400, 400
+            pos: root.width/2, 0
+            cols: 4
+            rows: 3
+
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
+            Image:
+                source: './images/facelogo011-01.png'
