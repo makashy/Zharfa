@@ -3,6 +3,15 @@
 #: set ACTIVITY_BAR_COLOR (51/255.0, 56/255.0, 66/255.0, 1)
 #: set ACTIVITY_BAR_WIDTH 50
 
+<RV>:
+    viewclass: 'Label'
+    RecycleBoxLayout:
+        default_size: None, dp(56)
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: 'vertical'
+
 <CameraClick>:
     # orientation: 'vertical'
 
@@ -12,8 +21,9 @@
                 rgba: BACKGROUND_COLOR
             Rectangle:
                 size: root.size
-
+        #ACTIVITY_BAR
         RelativeLayout:
+            id: ACTIVITY_BAR
             size_hint: None, 1
             width : ACTIVITY_BAR_WIDTH
             canvas:
@@ -22,8 +32,11 @@
                 Rectangle:
                     size: self.size
 
+        #Camera section
         RelativeLayout:
-            size_hint: 0.5, 1
+            id: camera_section
+            size_hint: None, 1
+            width: (root.width - ACTIVITY_BAR_WIDTH)/2
             pos: ACTIVITY_BAR_WIDTH, 0
 
             Image:
@@ -44,35 +57,27 @@
                 pos: 0, 0
                 text: 'Capture'
                 on_press: root.capture()
+                
+        #data table
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: None, 1
+            width: (root.width - ACTIVITY_BAR_WIDTH)/2
+            pos: ACTIVITY_BAR_WIDTH + (root.width - ACTIVITY_BAR_WIDTH) / 2, 0
+            padding: 10
 
-        GridLayout:
-            size_hint: 0.5, 1
-            # # size: 400, 400
-            pos: root.width/2, 0
-            cols: 4
-            rows: 3
+            RV:
+        #     spacing: 10
+        #     # cols: 4
+        #     # rows: 3
+        #     ListView:
+        #         id: passenger_list_kv
+        #         adapter:
+        #             ListAdapter(data=["Doug Smith"], cls=main.StudentListButton)
+        #     # Image:
+        #     #     source: './images/facelogo011-01.png'
+        #     # Image:
+        #     #     source: './images/facelogo011-01.png'
+        #     # Image:
+        #     #     source: './images/facelogo011-01.png'
 
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
-            Image:
-                source: './images/facelogo011-01.png'
