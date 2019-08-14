@@ -80,8 +80,8 @@ class ZharfaApp(App):
                     print(emb)
                     text = "unknown " + str( compare2(dbase.RecognitionID[0], emb))
                     for index in dbase.index:
-                        if compare(dbase.RecognitionID[index], face_descriptor_from_prealigned_image[0]):
-                            text = dbase.FirstName[index] + ' ' + dbase.LastName[index] + ' ' + str( compare2(dbase.RecognitionID[index], np.array(face_descriptor_from_prealigned_image)))
+                        if compare(dbase.RecognitionID[index], emb):
+                            text = dbase.FirstName[index] + ' ' + dbase.LastName[index] + ' ' + str( compare2(dbase.RecognitionID[0], emb))
 
                     font = cv2.FONT_HERSHEY_SIMPLEX
                     cv2.putText(frame,text,(rect.left(),rect.bottom()+10), font, 1,(255,255,255),2,cv2.LINE_AA)
