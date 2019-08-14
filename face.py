@@ -15,6 +15,8 @@ import dlib
 
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 Config.set('kivy','window_icon','./images/facelogo010-01.png')
+Config.set('graphics','minimum_width',425)
+Config.set('graphics','minimum_height',200)
 
 detector_path = "./utils/core/mmod_human_face_detector.dat"
 predictor_path = "./utils/core/shape_predictor_5_face_landmarks.dat"
