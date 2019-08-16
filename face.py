@@ -3,15 +3,16 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
 import time
 from kivy.config import Config
-# from skimage.io import imread
+# from skimage.io import imsave
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import cv2
 import pandas as pd
 import numpy as np
 from kivy.uix.recycleview import RecycleView
+# import utils.debugtools
 from utils.facetools import *
-import dlib 
+from utils.databasetools import DataBase
 
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 Config.set('kivy','window_icon','./images/facelogo010-01.png')
@@ -22,15 +23,16 @@ detector_path = "./utils/core/mmod_human_face_detector.dat"
 predictor_path = "./utils/core/shape_predictor_5_face_landmarks.dat"
 # recognizer_path = "./utils/core/dlib_face_recognition_resnet_model_v1.dat"
 recognizer_path = './utils/core/ms_celeb_1M_facenet_keras_weights.h5'
-
-database_address = './database/database.pkl'
-
-dbase = pd.	read_pickle(database_address)
+database_address = './database/'
 
 class RV(RecycleView):
     def __init__(self, **kwargs):
         super(RV, self).__init__(**kwargs)
         self.data = [{'text': str(x)} for x in range(100)]
+
+# class DataCard(RelativeLayout):
+
+
 
 class CameraClick(BoxLayout):
     def capture(self):
@@ -49,6 +51,7 @@ class ZharfaApp(App):
 
     def build(self):
         self.cm = CameraClick()
+        self.db = DataBase(database_address)
         Clock.schedule_interval(self.update, 1.0/33.0)
 
         self.dog = WatchDog(detector_path=detector_path, 
@@ -62,8 +65,28 @@ class ZharfaApp(App):
         
         return self.cm
 
-    def update(self, dt):
+    # def show_people_info(self, result_list):
+    #     for i in range(len(result_list['detected_people'])): 
+    #         rect = result_list['detected_people'][i].rect
+    #         emb = result_list['embeddings'][i]
+    #         cv2.rectangle(frame,(rect.right(),rect.top()),(rect.left(),rect.bottom()),(0,255,0),3)
+            
+    #         print('##########################' + str(i))
+    #         print(emb)
+    #         text = "unknown " + str( compare2(dbase.RecognitionID[0], emb))
+    #         for index in dbase.index:
+    #             if compare(dbase.RecognitionID[index], emb):
+    #                 text = dbase.FirstName[index] + ' ' + dbase.LastName[index] + ' ' + str( compare2(dbase.RecognitionID[0], emb))
+    
+    #         font = cv2.FONT_HERSHEY_SIMPLEX
+    #         cv2.putText(frame,text,(rect.left(),rect.bottom()+10), font, 1,(255,255,255),2,cv2.LINE_AA)
+    #     #show info of new people
+    #         # if a person is in the view , reset his removal timer
 
+    #     # remove info of old people
+
+    def update(self, dt):
+        # pass
         if(self.cm.ids['play'].state is 'down'):
             # 1.capture a frame
             ret, frame = self.capture.read()
@@ -71,20 +94,20 @@ class ZharfaApp(App):
             # 2.detecting faces
             # dets = self.dog.detector(frame)
             result_list = self.dog.identify(frame)
-
-            if result_list is not None:
-                for i in range(len(result_list['detected_people'])): 
-                    rect = result_list['detected_people'][i].rect
-                    emb = result_list['embeddings'][i]
+            if result_list is not None:  
+                correspondence_dict = self.db.update(result_list)
+                self.db.save_data_frame()
+                for i in range(len(result_list['DetectedFaces'])): 
+                    rect = result_list['DetectedFaces'][i].rect
+                    emb = result_list['RecognitionID'][i]
                     cv2.rectangle(frame,(rect.right(),rect.top()),(rect.left(),rect.bottom()),(0,255,0),3)
                     
-                    print('##########################' + str(i))
-                    print(emb)
-                    text = "unknown " + str( compare2(dbase.RecognitionID[0], emb))
-                    for index in dbase.index:
-                        if compare(dbase.RecognitionID[index], emb):
-                            text = dbase.FirstName[index] + ' ' + dbase.LastName[index] + ' ' + str( compare2(dbase.RecognitionID[0], emb))
-
+                    # text = "unknown " + str( compare2(dbase.RecognitionID[0], emb))
+                    # for index in dbase.index:
+                    #     if compare(dbase.RecognitionID[index], emb):
+                    #         text = dbase.FirstName[index] + ' ' + dbase.LastName[index] + ' ' + str( compare2(dbase.RecognitionID[0], emb))
+                    id_num = correspondence_dict[i]
+                    text = self.db.dataframe.at[id_num, 'FirstName'] + ' ' + self.db.dataframe.at[id_num, 'LastName']
                     font = cv2.FONT_HERSHEY_SIMPLEX
                     cv2.putText(frame,text,(rect.left(),rect.bottom()+10), font, 1,(255,255,255),2,cv2.LINE_AA)
 

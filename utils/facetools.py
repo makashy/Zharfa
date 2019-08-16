@@ -1,7 +1,10 @@
 
 import numpy as np
 import dlib
+import pandas as pd
 from utils.inception_resnet_v1 import InceptionResNetV1
+
+pd.set_option('mode.chained_assignment', 'raise')
 
 def prewhiten(x):
     if x.ndim == 4:
@@ -47,16 +50,16 @@ class WatchDog():
 
 
     def identify(self, image): # TODO : images
-        detected_people = self.detector(image)
-        if len(detected_people)<1:
+        detected_faces = self.detector(image)
+        if len(detected_faces)<1:
             return None
 
-        faces = dlib.full_object_detections()
-        for i, person in enumerate(detected_people):
-            faces.append(self.predictor(image, person.rect))
+        face_points = dlib.full_object_detections()
+        for i, person in enumerate(detected_faces):
+            face_points.append(self.predictor(image, person.rect))
 
         
-        face_chips = np.array(dlib.get_face_chips(image, faces, 160, 0.25))
+        face_chips = np.array(dlib.get_face_chips(image, face_points, 160, 0.25))
         # print(np.array(face_chips).shape)
         # if len(np.array(face_chips).shape)<4:
         #     face_chips = np.expand_dims(np.array(face_chips),axis=0)
@@ -64,10 +67,10 @@ class WatchDog():
         
         embeddings = l2_normalize(embeddings)
 
-        result = {'detected_people': detected_people,
-                  'faces' : faces,
-                  'face_chips' : face_chips,
-                  'embeddings' : embeddings}
+        result = {'DetectedFaces': detected_faces,
+                  'FacePoints' : face_points,
+                  'FaceChips' : face_chips,
+                  'RecognitionID' : embeddings}
 
         return result
 
