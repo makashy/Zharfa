@@ -13,9 +13,14 @@ class InputImage():
         self.source.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080 / 2)
 
     def get_frame(self):
-        ret, frame = self.source.read()
+        for _ in range(5):
+            ret, frame = self.source.read()
+            if ret:
+                break
+            print('No data!')
+            time.sleep(0.002)
         # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        return frame
+        return ret, frame
 
     def add_face_boxes(self, frame, rect, color=(0, 255, 0), thickness=3):
         cv2.rectangle(frame, (rect.right(), rect.top()),

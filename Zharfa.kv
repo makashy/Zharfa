@@ -3,6 +3,27 @@
 #: set ACTIVITY_BAR_COLOR (51/255.0, 56/255.0, 66/255.0, 1)
 #: set ACTIVITY_BAR_WIDTH 50
 
+
+<BackgroundColor@Widget>
+    background_color: 1, 1, 1, 1
+    canvas.before:
+        Color:
+            rgba: root.background_color
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+<BackgroundLabel@Label+BackgroundColor>
+    background_color: BACKGROUND_COLOR
+    size_hint: 1, None
+    height: 40
+    text_size: self.size
+    halign: 'left'
+    valign: 'center'
+    text: 'CHANGE THIS'
+    padding:5,5
+
+
 <DataCard@RelativeLayout>:
     size_hint: 1, 0.2 
     Image:
@@ -75,6 +96,7 @@
             #         size: self.size
             #         pos: self.pos
 
+            #camera
             RelativeLayout:
                 size_hint: 1, 0.5
                 # pos: 0, self.parent.size[1]/2
@@ -88,13 +110,19 @@
                     id: camera
                     color: (1,1,1,1)
                     source: './images/facelogo09-01.png'
-                    
+            #keys  
             BoxLayout:
                 orientation: 'horizontal'
                 size_hint: 1, None
-                height: 60
-                pos: 0, 0
-                padding: 10
+                height: 40
+                # pos: 0, 0
+                padding: 5
+                canvas:
+                    Color:
+                        rgba: (0.5, 0.5, 0.2, 1)
+                    Rectangle:
+                        size: self.size
+                        pos: self.pos
                 Spinner:
                     # size_hint: None, none
                     # size: 100, 44
@@ -120,6 +148,35 @@
                     # pos: 0, 0
                     text: 'Capture'
                     on_press: root.capture()
+            # ip camera
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint: 1, None
+                height: 40
+                padding: 5
+                TextInput:
+                    id: ip_camera
+                    text: 'rtsp://192.168.1.14:8080/h264_pcm.sdp'
+                    multiline: False
+                Button:
+                    text: 'Change'
+                    on_press: app.input_image.change_source(ip_camera.text)
+
+            # view options
+            GridLayout:
+                size_hint: 1, None
+                height: 80
+                cols: 2
+                rows: 3
+                BackgroundLabel:
+                    text: 'Show face boxes'
+                Switch:
+                    id: face_box
+                BackgroundLabel:
+                    text: 'Show names'
+                Switch:
+                    id: names
+
                 
         #data table
         BoxLayout:

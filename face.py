@@ -73,30 +73,37 @@ class ZharfaApp(App):
         # pass
         if self.cm.ids['play'].state is 'down':
             # 1.capture a frame
-            frame = self.input_image.get_frame()
+            ret, frame = self.input_image.get_frame()
 
-            result_list = self.dog.identify(frame)
-            if result_list is not None:
-                correspondence_dict = self.db.update(result_list)
-                self.db.save_data_frame()
-                for i in range(len(result_list['DetectedFaces'])):
-                    rect = result_list['DetectedFaces'][i].rect
-                    # emb = result_list['RecognitionID'][i]
-                    frame = self.input_image.add_face_boxes(frame, rect)
+            if ret is False:
+                self.cm.ids['play'].state = 'normal'
+                # TODO: show a warning!
+                # self.cm.ids['camera'].source = './images/facelogo09-01.png'
+                self.cm.ids['camera'].reload()
+            else:
+                result_list = self.dog.identify(frame)
+                if result_list is not None:
+                    correspondence_dict = self.db.update(result_list)
+                    self.db.save_data_frame()
+                    for i in range(len(result_list['DetectedFaces'])):
+                    ###face boxes#################################################
+                        rect = result_list['DetectedFaces'][i].rect
+                        if self.cm.ids['face_box'].active:
+                            frame = self.input_image.add_face_boxes(frame, rect)
+                    ###show names#################################################
+                        if self.cm.ids['names'].active:
+                            id_num = correspondence_dict[i]
+                            text = self.db.dataframe.at[
+                                id_num, 'FirstName'] + ' ' + self.db.dataframe.at[
+                                    id_num, 'LastName']
 
-                    id_num = correspondence_dict[i]
-                    text = self.db.dataframe.at[
-                        id_num, 'FirstName'] + ' ' + self.db.dataframe.at[
-                            id_num, 'LastName']
-                    
-                    frame = self.input_image.add_name(frame, text, rect)
+                            frame = self.input_image.add_name(frame, text, rect)
+                    ##############################################################
 
-            # cv2.imshow("CV2 Image", frame)
-            # convert it to texture
-
-            texture = self.input_image.get_kivy_texture(frame)
-            self.cm.ids['camera'].color = (1, 1, 1, 1)
-            self.cm.ids['camera'].texture = texture
+                # self.input_image.update_cv2_window(frame)
+                texture = self.input_image.get_kivy_texture(frame)
+                self.cm.ids['camera'].color = (1, 1, 1, 1)
+                self.cm.ids['camera'].texture = texture
 
 
 if __name__ == '__main__':
