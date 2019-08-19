@@ -172,7 +172,7 @@
                     size_hint: None, 1
                     width: self.parent.width/6
                     text: 'Change'
-                    on_press: app.input_image.change_source(source_address.text,source_mode.text, camera_number.text, 1920, 1080)
+                    on_press: app.input_image.change_source(source_address.text,source_mode.text, camera_number.text, width.text, height.text)
 
             # image size
             BoxLayout:
@@ -188,6 +188,7 @@
                     id: width
                     text: '1920'
                     halign: 'center'
+                    input_filter: 'int'
                     background_color: TEXT_INPUT_BACKGROUND_COLOR
                     foreground_color: TEXT_INPUT_FOREGROUND_COLOR
                     font_size: 15
@@ -199,6 +200,7 @@
                     id: height
                     text: '1080'
                     halign: 'center'
+                    input_filter: 'int'
                     background_color: TEXT_INPUT_BACKGROUND_COLOR
                     foreground_color: TEXT_INPUT_FOREGROUND_COLOR
                     font_size: 15
