@@ -58,8 +58,13 @@ class ZharfaApp(App):
                             predictor_path=PREDICTOR_PATH,
                             recognizer_path=RECOGNIZER_PATH)
 
-        self.input_image = InputImage('images/facelogo010-01.png')
-        self.input_image.change_source(0)
+        self.input_image = InputImage('images/facelogo010-01.png',
+                                      'images/Demo1.mkv', 'images/Demo2.mp4')
+        self.input_image.change_source('',
+                                       mode='Camera',
+                                       camera_number='No.1',
+                                       width=1920,
+                                       hight=1080)
 
         return self.cm
 
@@ -86,21 +91,28 @@ class ZharfaApp(App):
                     correspondence_dict = self.db.update(result_list)
                     self.db.save_data_frame()
                     for i in range(len(result_list['DetectedFaces'])):
-                    ###face boxes#################################################
                         rect = result_list['DetectedFaces'][i].rect
+                        ###face boxes#################################################
                         if self.cm.ids['face_box'].active:
-                            frame = self.input_image.add_face_boxes(frame, rect)
-                    ###show names#################################################
+                            frame = self.input_image.add_face_boxes(
+                                frame, rect)
+                        ###show names#################################################
                         if self.cm.ids['names'].active:
                             id_num = correspondence_dict[i]
                             text = self.db.dataframe.at[
-                                id_num, 'FirstName'] + ' ' + self.db.dataframe.at[
+                                id_num,
+                                'FirstName'] + ' ' + self.db.dataframe.at[
                                     id_num, 'LastName']
 
-                            frame = self.input_image.add_name(frame, text, rect)
-                    ##############################################################
+                            frame = self.input_image.add_name(
+                                frame, text, rect)
+                        ###show ids#################################################
+                        if self.cm.ids['ids'].active:
+                            id_num = correspondence_dict[i]
+                            frame = self.input_image.add_id(
+                                frame, str(id_num), rect)
+                        ##############################################################
 
-                # self.input_image.update_cv2_window(frame)
                 texture = self.input_image.get_kivy_texture(frame)
                 self.cm.ids['camera'].color = (1, 1, 1, 1)
                 self.cm.ids['camera'].texture = texture
