@@ -17,7 +17,7 @@ from utils.imagetools import InputImage
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 Config.set('kivy', 'window_icon', './images/facelogo010-01.png')
 Config.set('graphics', 'minimum_width', 425)
-Config.set('graphics', 'minimum_height', 200)
+Config.set('graphics', 'minimum_height', 240)
 
 
 DETECTOR_PATH = "./utils/core/mmod_human_face_detector.dat"
