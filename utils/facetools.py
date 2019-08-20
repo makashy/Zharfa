@@ -61,8 +61,12 @@ class WatchDog():
             return None
 
         face_points = dlib.full_object_detections()
-        for i, person in enumerate(detected_faces):
+        detection_confidences = []
+        detection_rects = []
+        for _, person in enumerate(detected_faces):
             face_points.append(self.predictor(image, person.rect))
+            detection_confidences.append(person.confidence)
+            detection_rects.append(person.rect)
 
         face_chips = np.array(
             dlib.get_face_chips(image, face_points, 160, 0.25))
@@ -74,7 +78,9 @@ class WatchDog():
         embeddings = l2_normalize(embeddings)
 
         result = {
-            'DetectedFaces': detected_faces,
+            'Size': len(detected_faces),
+            'DetectionConfidences': detection_confidences,
+            'DetectionRects': detection_rects,
             'FacePoints': face_points,
             'FaceChips': face_chips,
             'RecognitionID': embeddings

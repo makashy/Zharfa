@@ -58,7 +58,7 @@ class DataBase():
         self.dataframe.at[index, 'TimeFlag'] = current_time
 
     def update(self, result_list):
-        list_size = len(result_list['DetectedFaces'])
+        list_size = result_list['Size']
         add_list = []
         update_list = []
         correspondence_dict = {}
