@@ -120,109 +120,111 @@ def _inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
 def InceptionResNetV1(input_shape=(160, 160, 3),
                       classes=128,
                       dropout_keep_prob=0.8,
-                      weights_path=None):
-    inputs = Input(shape=input_shape)
-    x = conv2d_bn(inputs, 32, 3, strides=2, padding='valid', name='Conv2d_1a_3x3')
-    x = conv2d_bn(x, 32, 3, padding='valid', name='Conv2d_2a_3x3')
-    x = conv2d_bn(x, 64, 3, name='Conv2d_2b_3x3')
-    x = MaxPooling2D(3, strides=2, name='MaxPool_3a_3x3')(x)
-    x = conv2d_bn(x, 80, 1, padding='valid', name='Conv2d_3b_1x1')
-    x = conv2d_bn(x, 192, 3, padding='valid', name='Conv2d_4a_3x3')
-    x = conv2d_bn(x, 256, 3, strides=2, padding='valid', name='Conv2d_4b_3x3')
+                      weights_path=None,
+                      device_id='0'):
+    with tf.device('/device:GPU:'+device_id):
+        inputs = Input(shape=input_shape)
+        x = conv2d_bn(inputs, 32, 3, strides=2, padding='valid', name='Conv2d_1a_3x3')
+        x = conv2d_bn(x, 32, 3, padding='valid', name='Conv2d_2a_3x3')
+        x = conv2d_bn(x, 64, 3, name='Conv2d_2b_3x3')
+        x = MaxPooling2D(3, strides=2, name='MaxPool_3a_3x3')(x)
+        x = conv2d_bn(x, 80, 1, padding='valid', name='Conv2d_3b_1x1')
+        x = conv2d_bn(x, 192, 3, padding='valid', name='Conv2d_4a_3x3')
+        x = conv2d_bn(x, 256, 3, strides=2, padding='valid', name='Conv2d_4b_3x3')
 
-    # 5x Block35 (Inception-ResNet-A block):
-    for block_idx in range(1, 6):
+        # 5x Block35 (Inception-ResNet-A block):
+        for block_idx in range(1, 6):
+            x = _inception_resnet_block(x,
+                                        scale=0.17,
+                                        block_type='Block35',
+                                        block_idx=block_idx)
+
+        # Mixed 6a (Reduction-A block):
+        channel_axis = 1 if K.image_data_format() == 'channels_first' else 3
+        name_fmt = partial(_generate_layer_name, prefix='Mixed_6a')
+        branch_0 = conv2d_bn(x,
+                            384,
+                            3,
+                            strides=2,
+                            padding='valid',
+                            name=name_fmt('Conv2d_1a_3x3', 0))
+        branch_1 = conv2d_bn(x, 192, 1, name=name_fmt('Conv2d_0a_1x1', 1))
+        branch_1 = conv2d_bn(branch_1, 192, 3, name=name_fmt('Conv2d_0b_3x3', 1))
+        branch_1 = conv2d_bn(branch_1,
+                            256,
+                            3,
+                            strides=2,
+                            padding='valid',
+                            name=name_fmt('Conv2d_1a_3x3', 1))
+        branch_pool = MaxPooling2D(3,
+                                strides=2,
+                                padding='valid',
+                                name=name_fmt('MaxPool_1a_3x3', 2))(x)
+        branches = [branch_0, branch_1, branch_pool]
+        x = Concatenate(axis=channel_axis, name='Mixed_6a')(branches)
+
+        # 10x Block17 (Inception-ResNet-B block):
+        for block_idx in range(1, 11):
+            x = _inception_resnet_block(x,
+                                        scale=0.1,
+                                        block_type='Block17',
+                                        block_idx=block_idx)
+
+        # Mixed 7a (Reduction-B block): 8 x 8 x 2080
+        name_fmt = partial(_generate_layer_name, prefix='Mixed_7a')
+        branch_0 = conv2d_bn(x, 256, 1, name=name_fmt('Conv2d_0a_1x1', 0))
+        branch_0 = conv2d_bn(branch_0,
+                            384,
+                            3,
+                            strides=2,
+                            padding='valid',
+                            name=name_fmt('Conv2d_1a_3x3', 0))
+        branch_1 = conv2d_bn(x, 256, 1, name=name_fmt('Conv2d_0a_1x1', 1))
+        branch_1 = conv2d_bn(branch_1,
+                            256,
+                            3,
+                            strides=2,
+                            padding='valid',
+                            name=name_fmt('Conv2d_1a_3x3', 1))
+        branch_2 = conv2d_bn(x, 256, 1, name=name_fmt('Conv2d_0a_1x1', 2))
+        branch_2 = conv2d_bn(branch_2, 256, 3, name=name_fmt('Conv2d_0b_3x3', 2))
+        branch_2 = conv2d_bn(branch_2,
+                            256,
+                            3,
+                            strides=2,
+                            padding='valid',
+                            name=name_fmt('Conv2d_1a_3x3', 2))
+        branch_pool = MaxPooling2D(3,
+                                strides=2,
+                                padding='valid',
+                                name=name_fmt('MaxPool_1a_3x3', 3))(x)
+        branches = [branch_0, branch_1, branch_2, branch_pool]
+        x = Concatenate(axis=channel_axis, name='Mixed_7a')(branches)
+
+        # 5x Block8 (Inception-ResNet-C block):
+        for block_idx in range(1, 6):
+            x = _inception_resnet_block(x,
+                                        scale=0.2,
+                                        block_type='Block8',
+                                        block_idx=block_idx)
         x = _inception_resnet_block(x,
-                                    scale=0.17,
-                                    block_type='Block35',
-                                    block_idx=block_idx)
-
-    # Mixed 6a (Reduction-A block):
-    channel_axis = 1 if K.image_data_format() == 'channels_first' else 3
-    name_fmt = partial(_generate_layer_name, prefix='Mixed_6a')
-    branch_0 = conv2d_bn(x,
-                         384,
-                         3,
-                         strides=2,
-                         padding='valid',
-                         name=name_fmt('Conv2d_1a_3x3', 0))
-    branch_1 = conv2d_bn(x, 192, 1, name=name_fmt('Conv2d_0a_1x1', 1))
-    branch_1 = conv2d_bn(branch_1, 192, 3, name=name_fmt('Conv2d_0b_3x3', 1))
-    branch_1 = conv2d_bn(branch_1,
-                         256,
-                         3,
-                         strides=2,
-                         padding='valid',
-                         name=name_fmt('Conv2d_1a_3x3', 1))
-    branch_pool = MaxPooling2D(3,
-                               strides=2,
-                               padding='valid',
-                               name=name_fmt('MaxPool_1a_3x3', 2))(x)
-    branches = [branch_0, branch_1, branch_pool]
-    x = Concatenate(axis=channel_axis, name='Mixed_6a')(branches)
-
-    # 10x Block17 (Inception-ResNet-B block):
-    for block_idx in range(1, 11):
-        x = _inception_resnet_block(x,
-                                    scale=0.1,
-                                    block_type='Block17',
-                                    block_idx=block_idx)
-
-    # Mixed 7a (Reduction-B block): 8 x 8 x 2080
-    name_fmt = partial(_generate_layer_name, prefix='Mixed_7a')
-    branch_0 = conv2d_bn(x, 256, 1, name=name_fmt('Conv2d_0a_1x1', 0))
-    branch_0 = conv2d_bn(branch_0,
-                         384,
-                         3,
-                         strides=2,
-                         padding='valid',
-                         name=name_fmt('Conv2d_1a_3x3', 0))
-    branch_1 = conv2d_bn(x, 256, 1, name=name_fmt('Conv2d_0a_1x1', 1))
-    branch_1 = conv2d_bn(branch_1,
-                         256,
-                         3,
-                         strides=2,
-                         padding='valid',
-                         name=name_fmt('Conv2d_1a_3x3', 1))
-    branch_2 = conv2d_bn(x, 256, 1, name=name_fmt('Conv2d_0a_1x1', 2))
-    branch_2 = conv2d_bn(branch_2, 256, 3, name=name_fmt('Conv2d_0b_3x3', 2))
-    branch_2 = conv2d_bn(branch_2,
-                         256,
-                         3,
-                         strides=2,
-                         padding='valid',
-                         name=name_fmt('Conv2d_1a_3x3', 2))
-    branch_pool = MaxPooling2D(3,
-                               strides=2,
-                               padding='valid',
-                               name=name_fmt('MaxPool_1a_3x3', 3))(x)
-    branches = [branch_0, branch_1, branch_2, branch_pool]
-    x = Concatenate(axis=channel_axis, name='Mixed_7a')(branches)
-
-    # 5x Block8 (Inception-ResNet-C block):
-    for block_idx in range(1, 6):
-        x = _inception_resnet_block(x,
-                                    scale=0.2,
+                                    scale=1.,
+                                    activation=None,
                                     block_type='Block8',
-                                    block_idx=block_idx)
-    x = _inception_resnet_block(x,
-                                scale=1.,
-                                activation=None,
-                                block_type='Block8',
-                                block_idx=6)
+                                    block_idx=6)
 
-    # Classification block
-    x = GlobalAveragePooling2D(name='AvgPool')(x)
-    x = Dropout(1.0 - dropout_keep_prob, name='Dropout')(x)
-    # Bottleneck
-    x = Dense(classes, use_bias=False, name='Bottleneck')(x)
-    bn_name = _generate_layer_name('BatchNorm', prefix='Bottleneck')
-    x = BatchNormalization(momentum=0.995, epsilon=0.001, scale=False,
-                           name=bn_name)(x)
+        # Classification block
+        x = GlobalAveragePooling2D(name='AvgPool')(x)
+        x = Dropout(1.0 - dropout_keep_prob, name='Dropout')(x)
+        # Bottleneck
+        x = Dense(classes, use_bias=False, name='Bottleneck')(x)
+        bn_name = _generate_layer_name('BatchNorm', prefix='Bottleneck')
+        x = BatchNormalization(momentum=0.995, epsilon=0.001, scale=False,
+                            name=bn_name)(x)
 
-    # Create model
-    model = Model(inputs, x, name='inception_resnet_v1')
-    if weights_path is not None:
-        model.load_weights(weights_path)
+        # Create model
+        model = Model(inputs, x, name='inception_resnet_v1')
+        if weights_path is not None:
+            model.load_weights(weights_path)
 
     return model

@@ -47,13 +47,13 @@ def compare2(vec1, vec2):
 
 
 class WatchDog():
-    def __init__(self, detector_path, predictor_path, recognizer_path):
+    def __init__(self, detector_path, predictor_path, recognizer_path, device_id):
+        dlib.cuda.set_device(device_id)
         self.detector = dlib.cnn_face_detection_model_v1(
             detector_path)  #dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(predictor_path)
-        self.recognizer = InceptionResNetV1(
-            weights_path=recognizer_path
-        )  #dlib.face_recognition_model_v1(face_rec_model_path)
+        self.recognizer = InceptionResNetV1(weights_path=recognizer_path, device_id=str(device_id))
+        #dlib.face_recognition_model_v1(face_rec_model_path)
 
     def identify(self, image):  # TODO : images
         detected_faces = self.detector(image)
