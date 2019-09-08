@@ -32,8 +32,10 @@ class InputImage():
                 int(camera_number.replace('No.', '')) - 1)
         elif mode == 'IP Camera':
             if '192.168' in new_source:
-                self.source = open_cam_rtsp(new_source, 20000, self.width,
-                                            self.height)
+                # self.source = open_cam_rtsp(new_source, 20000, self.width,
+                #                             self.height)
+                self.source = cv2.VideoCapture(new_source)
+                print('IP camera ################')  #TODO remove
         elif mode == 'Video':
             self.source = cv2.VideoCapture(new_source)
         elif mode == 'Demo1':
@@ -55,4 +57,8 @@ class InputImage():
         # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return ret, frame
 
+    def do_with_timer(self, name='__str__', args=()):
+        start_time = time.time_ns()
+        result = self.__getattribute__(name)(*args)
+        print(name + ": ", time.time_ns() - start_time)
         return result
