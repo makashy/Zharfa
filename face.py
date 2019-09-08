@@ -13,6 +13,7 @@ from utils.databasetools import DataBase
 # import utils.debugtools
 from utils.facetools import WatchDog
 from utils.imagetools import InputImage
+from utils import gui
 
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 Config.set('kivy', 'window_icon', './images/facelogo010-01.png')
@@ -122,24 +123,24 @@ class ZharfaApp(App):
                 rect = result_list['DetectionRects'][i]
                 ###face boxes#################################################
                 if self.cm.ids['face_box'].active:
-                    frame = self.input_image.add_face_boxes(frame, rect)
+                    frame = gui.add_face_boxes(frame, rect)
                 ###show names#################################################
                 if self.cm.ids['names'].active:
                     id_num = correspondence_dict[i]
                     text = self.database.dataframe.at[
                         id_num, 'FirstName'] + ' ' + self.database.dataframe.at[
                             id_num, 'LastName']
-                    frame = self.input_image.add_name(frame, text, rect)
+                    frame = gui.add_name(frame, text, rect)
                 ###show ids#################################################
                 if self.cm.ids['ids'].active:
-                    frame = self.input_image.add_id(
+                    frame = gui.add_id(
                         frame, str(correspondence_dict[i]), rect)
                 ##############################################################
         else:
             print("No detection at :", time.time())
 
         print("Screen update at :", time.time())
-        texture = self.input_image.get_kivy_texture(frame)
+        texture = gui.get_kivy_texture(frame)
         self.cm.ids['camera'].color = (1, 1, 1, 1)
         self.cm.ids['camera'].texture = texture
 

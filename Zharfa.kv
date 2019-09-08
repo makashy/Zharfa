@@ -5,7 +5,7 @@
 #: set TEXT_INPUT_FOREGROUND_COLOR (204/255.0, 204/255.0, 204/255.0, 1)
 #: set INPUT_BACKGROUND_COLOR (33/255.0, 37/255.0, 43/255.0, 1)
 #: set ACTIVITY_BAR_WIDTH 50
-
+#:import gui utils.gui
 
 <BackgroundColor@Widget>
     background_color: 1, 1, 1, 1
@@ -126,7 +126,7 @@
                     pos_hint: {'center': (.5, .5)}
                     text: 'Camera'
                     values: 'Camera', 'IP Camera', 'Video', 'Demo1', 'Demo2'
-                    on_text: app.input_image.check_source(self.text, app.cm)
+                    on_text: gui.check_source(self.text, app.cm)
                 ToggleButton:
                     id: play
                     # size_hint: None, None
