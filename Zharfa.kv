@@ -67,7 +67,7 @@
 
     FloatLayout:
         size_hint: None, None
-        size: max(root.size[0], 800),  max(root.size[1], 480)
+        size: max(root.size[0], 800),  max(root.size[1], 600)
         canvas:
             Color:
                 rgba: BACKGROUND_COLOR
@@ -224,6 +224,28 @@
                     text: 'Show IDs'
                 Switch:
                     id: ids
+
+            # Status viewer
+            GridLayout:
+                size_hint: 1, None
+                height: 60
+                cols: 2
+                rows: 3
+                BackgroundLabel:
+                    text: 'FPS'
+                BackgroundLabel:
+                    id: FPS
+                    text: str(app.counter)
+
+                BackgroundLabel:
+                    text: 'FPS'
+                BackgroundLabel:
+                    text: str(app.counter)
+
+                BackgroundLabel:
+                    text: 'FPS'
+                BackgroundLabel:
+                    text: str(app.counter)
 
                 
         #data table

@@ -74,6 +74,8 @@ def f(face_detector_path, predictor_path, keras_weight, frame_queue,
 class ZharfaApp(App):
     def __init__(self):
         super().__init__()
+        self.time = time.time()
+        self.counter = 0
         self.cm = None
         self.database = None
         self.dog = None
@@ -146,6 +148,12 @@ class ZharfaApp(App):
 
     def update(self, dt):
         # pass
+        if time.time() - self.time > 1:
+            self.time = time.time()
+            print("fps: ", self.counter)
+            self.cm.ids['FPS'].text = str(self.counter)
+            self.counter = 0
+
         if self.cm.ids['play'].state is 'down':
             # 1.capture a frame
             ret, frame_original = self.input_image.get_frame()
@@ -175,6 +183,7 @@ class ZharfaApp(App):
             for i in range(self.num_dog):
                 try:
                     result_list, frame = self.result_queues[i].get_nowait()
+                    self.counter = self.counter + 1
                     print("received from ", i, " at ", time.time())
                     correspondence_dict = self.update_save_database(
                         result_list)
