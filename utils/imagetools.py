@@ -1,8 +1,7 @@
 import time
 
-from kivy.graphics.texture import Texture #pylint: disable=no-name-in-module
-
-import cv2 #pylint: disable=import-error
+import cv2  #pylint: disable=import-error
+from multiprocessing import JoinableQueue, Process
 
 
 def open_cam_rtsp(uri, width, height, latency):
@@ -62,3 +61,54 @@ class InputImage():
         result = self.__getattribute__(name)(*args)
         print(name + ": ", time.time_ns() - start_time)
         return result
+
+
+def input_image_process(initial_source, demo1_address, demo2_address,
+                        source_info, image_list, play_mode, stop_signal):
+
+    input_image = InputImage(initial_source, demo1_address, demo2_address)
+    timer = time.time()
+    state = False
+    while True:
+        if stop_signal.empty() is False:
+            input_image.source.release()
+            break
+
+        if source_info.empty() is False:
+            info = source_info.get_nowait()
+            input_image.change_source(info[0], info[1], info[2], info[3],
+                                      info[4])
+
+            while image_list.empty() is False:
+                image_list.get_nowait()
+
+        if play_mode.empty() is False:
+            state = play_mode.get_nowait()
+            print("OK")
+
+        if time.time() - timer > 0.5 and state:
+            timer = time.time()
+            # while (image_list.empty() is False):
+            #     image_list.get_nowait()
+
+            image_list.put_nowait(input_image.get_frame())
+
+
+class InputImageProcess():
+    def __init__(self, initial_source, demo1_address, demo2_address):
+        self.source_info = JoinableQueue()
+        self.image_list = JoinableQueue()
+        self.play_mode = JoinableQueue()
+        self.stop_signal = JoinableQueue()
+        self.proess = Process(target=input_image_process,
+                              args=(initial_source, demo1_address,
+                                    demo2_address, self.source_info,
+                                    self.image_list, self.play_mode,
+                                    self.stop_signal))
+
+    def end_process(self):
+        self.stop_signal.put_nowait(True)
+        time.sleep(1)  #TODO : change duration or remove!
+        self.proess.terminate()
+        self.proess.join()
+        self.proess.close()

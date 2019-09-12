@@ -124,7 +124,7 @@
                 Spinner:
                     id: source_mode
                     pos_hint: {'center': (.5, .5)}
-                    text: 'Camera'
+                    text: 'Demo1'
                     values: 'Camera', 'IP Camera', 'Video', 'Demo1', 'Demo2'
                     on_text: gui.check_source(self.text, app.cm)
                 ToggleButton:
@@ -134,7 +134,7 @@
                     # center_x: self.parent.width/2
                     # top: self.parent.center_y - 5
                     text: 'Play'
-                    on_press: print(root.size, self.parent.center_x)
+                    on_press: app.input_process.play_mode.put_nowait(self.state)
                 ToggleButton:
                     id: record
                     text: 'Record'
@@ -172,7 +172,7 @@
                     size_hint: None, 1
                     width: self.parent.width/6
                     text: 'Change'
-                    on_press: app.input_image.change_source(source_address.text,source_mode.text, camera_number.text, width.text, height.text)
+                    on_press: app.input_process.source_info.put_nowait([source_address.text, source_mode.text, camera_number.text, width.text, height.text])
 
             # image size
             BoxLayout:

@@ -12,7 +12,7 @@ from kivy.uix.recycleview import RecycleView
 from utils.databasetools import DataBase
 # import utils.debugtools
 from utils.facetools import WatchDog
-from utils.imagetools import InputImage
+from utils.imagetools import InputImageProcess
 from utils import gui
 
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
@@ -79,7 +79,10 @@ class ZharfaApp(App):
         self.cm = None
         self.database = None
         self.dog = None
-        self.input_image = None
+
+        self.input_process = InputImageProcess('images/Demo1.mkv',
+                                               'images/Demo1.mkv',
+                                               'images/Demo2.mp4')
 
         self.num_dog = 1
 
@@ -100,13 +103,7 @@ class ZharfaApp(App):
         self.database = DataBase(DATABASE_ADDRESS)
         Clock.schedule_interval(self.update, 1.0 / 33.0)
 
-        self.input_image = InputImage('images/facelogo010-01.png',
-                                      'images/Demo1.mkv', 'images/Demo2.mp4')
-        self.input_image.change_source('',
-                                       mode='Camera',
-                                       camera_number='No.1',
-                                       width=1920,
-                                       hight=1080)
+        self.input_process.proess.start()
 
         for i in range(self.num_dog):
             self.dogs[i].start()
@@ -135,8 +132,8 @@ class ZharfaApp(App):
                     frame = gui.add_name(frame, text, rect)
                 ###show ids#################################################
                 if self.cm.ids['ids'].active:
-                    frame = gui.add_id(
-                        frame, str(correspondence_dict[i]), rect)
+                    frame = gui.add_id(frame, str(correspondence_dict[i]),
+                                       rect)
                 ##############################################################
         else:
             print("No detection at :", time.time())
@@ -156,12 +153,17 @@ class ZharfaApp(App):
 
         if self.cm.ids['play'].state is 'down':
             # 1.capture a frame
-            ret, frame_original = self.input_image.get_frame()
+            if self.input_process.image_list.empty():
+                ret = None
+            else:
+                ret, frame_original = self.input_process.image_list.get_nowait(
+                )
 
-            if ret is False:
-                self.cm.ids['play'].state = 'normal'
-                # TODO: show a warning!
-                self.cm.ids['camera'].reload()
+            if ret is False or ret is None:
+                if ret is False:
+                    self.cm.ids['play'].state = 'normal'
+                    # TODO: show a warning!
+                    self.cm.ids['camera'].reload()
 
             else:
                 if time.time() - self.timer > 0.200:
@@ -202,6 +204,8 @@ class ZharfaApp(App):
             dog.terminate()
             dog.join()
             dog.close()
+
+        self.input_process.end_process()
 
 
 if __name__ == '__main__':
