@@ -36,16 +36,6 @@ def compare(vec1, vec2):
 def compare2(vec1, vec2):
     return np.linalg.norm(vec1 - vec2)
 
-
-# def identify(face_chips, database):
-#     embedings = model.predict(face_chip)
-#     nromal_embedings = l2_normalize(embedings)
-
-#     for all in database:
-#         list = create list for all face with probability and id
-#     return list
-
-
 class WatchDog():
     def __init__(self, detector_path, predictor_path, recognizer_path, device_id):
         dlib.cuda.set_device(device_id)
@@ -87,17 +77,3 @@ class WatchDog():
         }
 
         return result
-
-
-# shape = self.dog.predictor(frame, subject)
-#############
-# face_chip = dlib.get_face_chip(frame, shape,150,0.25)
-# face_descriptor_from_prealigned_image = self.facerec.compute_face_descriptor(face_chip, 10)
-############
-# face_descriptor_from_prealigned_image = self.facerec.compute_face_descriptor(frame, shape, 10, 0.25)
-############
-# face_chip = dlib.get_face_chip(frame, shape,160,0.25)
-# face_chip = np.expand_dims(face_chip, 0)
-# face_chip = np.array(face_chip, np.float32)
-# face_descriptor_from_prealigned_image = self.dog.recognizer.predict(face_chip)
-############
