@@ -103,7 +103,7 @@ class ZharfaApp(App):
         self.database = DataBase(DATABASE_ADDRESS)
         Clock.schedule_interval(self.update, 1.0 / 33.0)
 
-        self.input_process.proess.start()
+        self.input_process.start()
 
         for i in range(self.num_dog):
             self.dogs[i].start()
