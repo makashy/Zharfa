@@ -11,7 +11,7 @@ from kivy.uix.recycleview import RecycleView
 
 from utils.databasetools import DataBase
 # import utils.debugtools
-from utils.facetools import WatchDog
+from utils.facetools import DetectionProcess, IdentificationProcess
 from utils.imagetools import InputImageProcess
 from utils import gui
 
@@ -45,32 +45,6 @@ class CameraClick(BoxLayout):
         print("Captured")
 
 
-def f(face_detector_path, predictor_path, keras_weight, frame_queue,
-      result_queue, num, device_id):
-
-    dog = WatchDog(detector_path=face_detector_path,
-                   predictor_path=predictor_path,
-                   recognizer_path=keras_weight,
-                   device_id=device_id)
-
-    while True:
-        try:
-            frame = frame_queue.get_nowait()
-            print(num, "Received frame at ", time.time())
-            if frame is False:
-                break
-            else:
-                start_time = time.time()
-                result_list = dog.identify(frame)
-                print(" ||||||| Process time of  ", num, "  :  ",
-                      time.time() - start_time)
-                print(" ======= End time of  ", num, "  :  ", time.time())
-                result_queue.put([result_list, frame])
-        except queue.Empty:
-            # pass
-            print("######## No frame for", num)
-
-
 class ZharfaApp(App):
     def __init__(self):
         super().__init__()
@@ -78,22 +52,13 @@ class ZharfaApp(App):
         self.counter = 0
         self.cm = None
         self.database = None
-        self.dog = None
 
         self.input_process = InputImageProcess('images/Demo1.mkv',
                                                'images/Demo1.mkv',
                                                'images/Demo2.mp4')
 
-        self.num_dog = 1
-
-        self.frame_queues = [JoinableQueue() for _ in range(self.num_dog)]
-        self.result_queues = [JoinableQueue() for _ in range(self.num_dog)]
-        self.dogs = [
-            Process(target=f,
-                    args=(DETECTOR_PATH, PREDICTOR_PATH, RECOGNIZER_PATH,
-                          self.frame_queues[i], self.result_queues[i], i, i))
-            for i in range(self.num_dog)
-        ]
+        self.detection_process = DetectionProcess(DETECTOR_PATH, 0, self.input_process.image_list_q)
+        self.identification_process = IdentificationProcess(PREDICTOR_PATH, RECOGNIZER_PATH, 0, self.detection_process.output_q)
 
         self.timer = time.time()
         self.flag = 0
@@ -104,13 +69,13 @@ class ZharfaApp(App):
         Clock.schedule_interval(self.update, 1.0 / 33.0)
 
         self.input_process.start()
-
-        for i in range(self.num_dog):
-            self.dogs[i].start()
+        self.detection_process.start()
+        self.identification_process.start()
 
         return self.cm
 
     def update_save_database(self, result_list):
+        correspondence_dict = None
         if result_list is not None:
             correspondence_dict = self.database.update(result_list)
             self.database.save_data_frame()
@@ -138,74 +103,39 @@ class ZharfaApp(App):
         else:
             print("No detection at :", time.time())
 
-        print("Screen update at :", time.time())
+        print("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", time.time())
         texture = gui.get_kivy_texture(frame)
         self.cm.ids['camera'].color = (1, 1, 1, 1)
         self.cm.ids['camera'].texture = texture
 
     def update(self, dt):
-        # pass
+        # TODO: Improve this ↓!
         if time.time() - self.time > 1:
             self.time = time.time()
-            print("fps: ", self.counter)
             self.cm.ids['FPS'].text = str(self.counter)
             self.counter = 0
 
         if self.cm.ids['play'].state is 'down':
-            # 1.capture a frame
-            if self.input_process.image_list.empty():
-                ret = None
-            else:
-                ret, frame_original = self.input_process.image_list.get_nowait(
-                )
-
-            if ret is False or ret is None:
-                if ret is False:
+            usable, item = self.identification_process.output_q.empty_and_get()
+            if usable:
+                print("66666666666666666666 update starts at: ", time.time())
+                if item is None:
                     self.cm.ids['play'].state = 'normal'
-                    # TODO: show a warning!
                     self.cm.ids['camera'].reload()
-
-            else:
-                if time.time() - self.timer > 0.200:
-                    self.timer = time.time()
-                    # try:
-                    #     self.frame_queues[self.flag].put_nowait(frame)
-                    # except queue.Full:
-                    #     print(self.flag, " didn't get frame")
-                    if self.frame_queues[self.flag].empty():
-                        self.frame_queues[self.flag].put_nowait(frame_original)
-                        print("sent to ", self.flag, " at ", time.time())
-                    else:
-                        pass
-                        # print(self.flag, " didn't get frame")
-                    self.flag = self.flag + 1
-                    if self.flag == self.num_dog:
-                        self.flag = 0
-
-            for i in range(self.num_dog):
-                try:
-                    result_list, frame = self.result_queues[i].get_nowait()
+                    self.input_process.play_mode_q.empty_and_put(False)
+                    # TODO: show a warning!
+                else:
+                    frame, result_list = item
                     self.counter = self.counter + 1
-                    print("received from ", i, " at ", time.time())
-                    correspondence_dict = self.update_save_database(
-                        result_list)
-                    self.update_frame_viewer(result_list, frame,
-                                             correspondence_dict)
-                except queue.Empty:
-                    print("Not received any things at ", time.time())
+                    correspondence_dict = self.update_save_database(result_list)
+                    self.update_frame_viewer(result_list, frame, correspondence_dict)
+                    print("77777777777777777 update finishes at: ", time.time())
 
     def on_stop(self):
-        for i in range(self.num_dog):
-            self.frame_queues[i].put_nowait(False)
-        time.sleep(1)
-        print('after sleep')
-        for dog in self.dogs:
 
-            dog.terminate()
-            dog.join()
-            dog.close()
-
-        self.input_process.end_process()
+        self.input_process.end_process() 
+        self.detection_process.end_process()
+        self.identification_process.end_process()
 
 
 if __name__ == '__main__':

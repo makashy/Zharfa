@@ -134,7 +134,7 @@
                     # center_x: self.parent.width/2
                     # top: self.parent.center_y - 5
                     text: 'Play'
-                    on_press: app.input_process.play_mode.put_nowait(self.state)
+                    on_press: app.input_process.play_mode_q.empty_and_put(True if (self.state=="down") else False)
                 ToggleButton:
                     id: record
                     text: 'Record'
@@ -173,7 +173,7 @@
                     size_hint: None, 1
                     width: self.parent.width/6
                     text: 'Change'
-                    on_press: app.input_process.source_info.put_nowait([source_address.text, source_mode.text, camera_number.text, width.text, height.text])
+                    on_press: app.input_process.source_info_q.empty_and_put([source_address.text, source_mode.text, camera_number.text, width.text, height.text])
 
             # image size
             BoxLayout:

@@ -1,7 +1,10 @@
+import time
 import numpy as np
 import dlib
 import pandas as pd
 from utils.inception_resnet_v1 import InceptionResNetV1
+from multiprocessing import JoinableQueue, Process
+from utils.advanced_queues import AdvancedQueue
 
 pd.set_option('mode.chained_assignment', 'raise')
 
@@ -36,6 +39,7 @@ def compare(vec1, vec2):
 def compare2(vec1, vec2):
     return np.linalg.norm(vec1 - vec2)
 
+#TODO: remove
 class WatchDog():
     def __init__(self, detector_path, predictor_path, recognizer_path, device_id):
         dlib.cuda.set_device(device_id)
@@ -77,3 +81,111 @@ class WatchDog():
         }
 
         return result
+
+
+class DetectionProcess(Process):
+    def __init__(self, detector_path, device_id, input_queue):
+        super().__init__()
+        self.detector_path = detector_path
+        self.device_id = device_id
+        self.input_q = input_queue
+        self.output_q = AdvancedQueue(1)
+        self.stop_signal_q = JoinableQueue(1)
+
+    def run(self):
+        dlib.cuda.set_device(self.device_id)
+        detector = dlib.cnn_face_detection_model_v1(self.detector_path)
+        while True:
+            ################################################################
+            if self.stop_signal_q.empty() is False:
+                break
+
+            ################################################################
+            usable, item = self.input_q.empty_and_get()
+            if usable:
+                print("22222222222222222222 Det starts at: ", time.time())
+                frame = item
+                if frame is None:
+                    self.output_q.empty_and_put(None)
+                    print("33333333333333333333 Det finishes at: ", time.time(), "NONE")
+                else:
+                    detection_result = detector(frame)
+                    detection_confidences = []
+                    detection_rects = []
+                    for _, person in enumerate(detection_result):
+                        detection_confidences.append(person.confidence)
+                        detection_rects.append(person.rect)
+
+                    if len(detection_result) < 1:
+                        detection_result = None
+                    else:
+                        detection_result = {"detection_confidences":detection_confidences,
+                                            "detection_rects":detection_rects}
+                                            
+                    self.output_q.empty_and_put([frame, detection_result])
+                    print("33333333333333333333 Det finishes at: ", time.time())
+
+    def end_process(self):
+        self.stop_signal_q.put_nowait(True)
+        time.sleep(1)  #TODO : change duration or remove!
+        self.terminate()
+        self.join()
+        self.close()
+
+
+class IdentificationProcess(Process):
+    def __init__(self, predictor_path, recognizer_path, device_id, input_queue):
+        super().__init__()
+        self.predictor_path = predictor_path
+        self.recognizer_path = recognizer_path
+        self.device_id = device_id
+        self.input_q = input_queue
+        self.output_q = AdvancedQueue(1)
+        self.stop_signal_q = JoinableQueue(1)
+
+    def run(self):
+        dlib.cuda.set_device(self.device_id)
+        predictor = dlib.shape_predictor(self.predictor_path)
+        recognizer = InceptionResNetV1(weights_path=self.recognizer_path, device_id=str(self.device_id))
+        while True:
+            ################################################################
+            if self.stop_signal_q.empty() is False:
+                break
+
+            ################################################################
+            usable, item = self.input_q.empty_and_get()
+            if usable:
+                print("44444444444444444444 Iden starts at: ", time.time())
+                if item is None:
+                    self.output_q.empty_and_put(None)
+                    print("5555555555555555555 Iden finishes at: ", time.time(), "NONEEEE")
+                else:
+                    frame, detection_result = item
+                    if detection_result is None:
+                        result = None
+                    else:
+                        face_points = dlib.full_object_detections()
+                        detection_confidences = detection_result["detection_confidences"]
+                        detection_rects = detection_result["detection_rects"]
+                        for _, rect in enumerate(detection_rects):
+                            face_points.append(predictor(frame, rect))
+                        face_chips = np.array(dlib.get_face_chips(frame, face_points, 160, 0.25))
+                        embeddings = recognizer.predict(prewhiten(face_chips))
+                        embeddings = l2_normalize(embeddings)
+                        result = {
+                            'Size': len(detection_confidences),
+                            'DetectionConfidences': detection_confidences,
+                            'DetectionRects': detection_rects,
+                            'FacePoints': face_points,
+                            'FaceChips': face_chips,
+                            'RecognitionID': embeddings
+                        }
+                    self.output_q.empty_and_put([frame, result])
+                    print("5555555555555555555 Iden finishes at: ", time.time())
+
+    def end_process(self):
+        self.stop_signal_q.put_nowait(True)
+        time.sleep(1)  #TODO : change duration or remove!
+        self.terminate()
+        self.join()
+        self.close()

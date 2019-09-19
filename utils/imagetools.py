@@ -3,6 +3,7 @@ import time
 import numpy as np
 import cv2  #pylint: disable=import-error
 from multiprocessing import JoinableQueue, Process
+from utils.advanced_queues import AdvancedQueue
 
 
 def open_cam_rtsp(uri, width, height, latency):
@@ -52,7 +53,6 @@ class InputImage():
             if ret:
                 frame = cv2.resize(frame, (self.width, self.height))
                 break
-            print('No data!')
             time.sleep(0.002)
         # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return ret, frame
@@ -64,52 +64,16 @@ class InputImage():
         return result
 
 
-# def input_image_process(initial_source, demo1_address, demo2_address,
-#                         source_info, image_list, play_mode, stop_signal):
-
-#     input_image = InputImage(initial_source, demo1_address, demo2_address)
-#     timer = time.time()
-#     state = False
-#     while True:
-#         if stop_signal.empty() is False:
-#             input_image.source.release()
-#             break
-
-#         if source_info.empty() is False:
-#             info = source_info.get_nowait()
-#             input_image.change_source(info[0], info[1], info[2], info[3],
-#                                       info[4])
-
-#             while image_list.empty() is False:
-#                 image_list.get_nowait()
-
-#         if play_mode.empty() is False:
-#             state = play_mode.get_nowait()
-#             print("OK")
-
-#         if time.time() - timer > 0.5 and state:
-#             timer = time.time()
-#             # while (image_list.empty() is False):
-#             #     image_list.get_nowait()
-
-#             image_list.put_nowait(input_image.get_frame())
-
-
 class InputImageProcess(Process):
     def __init__(self, initial_source, demo1_address, demo2_address):
         super().__init__()
-        self.source_info = JoinableQueue()
-        self.image_list = JoinableQueue()
-        self.play_mode = JoinableQueue()
-        self.stop_signal = JoinableQueue()
+        self.source_info_q = AdvancedQueue(1)
+        self.image_list_q = AdvancedQueue(1)
+        self.play_mode_q = AdvancedQueue(1)
+        self.stop_signal_q = JoinableQueue(1)
         self.initial_source = initial_source
         self.demo1_address = demo1_address
         self.demo2_address = demo2_address
-        # self.proess = Process(target=input_image_process,
-        #                       args=(initial_source, demo1_address,
-        #                             demo2_address, self.source_info,
-        #                             self.image_list, self.play_mode,
-        #                             self.stop_signal))
 
     def run(self):
         input_image = InputImage(self.initial_source, self.demo1_address, self.demo2_address)
@@ -121,35 +85,42 @@ class InputImageProcess(Process):
         timer = time.time()
         state = False
         while True:
-            if self.stop_signal.empty() is False:
+            ################################################################
+            if self.stop_signal_q.empty() is False:
                 input_image.source.release()
                 break
 
-            if self.source_info.empty() is False:
-                info = self.source_info.get_nowait()
+            ################################################################
+            usable, item = self.source_info_q.empty_and_get()
+            if usable:
+                info = item
                 input_image.change_source(info[0], info[1], info[2], info[3],
                                           info[4])
+                self.image_list_q.empty_out()
 
-                while self.image_list.empty() is False:
-                    self.image_list.get_nowait()
+            ################################################################
+            usable, item = self.play_mode_q.empty_and_get()
+            if usable:
+                state = item
 
-            if self.play_mode.empty() is False:
-                state = self.play_mode.get_nowait()
-                print("OK")
-
+            ################################################################
             if time.time() - timer > 1/input_fps and state:
                 timer = time.time()
-                # while (self.image_list.empty() is False):
-                #     self.image_list.get_nowait()
-                frame = input_image.get_frame()
+                frame_availability, frame = input_image.get_frame()
+
+                #TODO: remove:
+                if frame_availability is False:
+                    print("No source")
+
+
                 if discard_counter == frame_to_discard:
                     discard_counter = 0
-                    self.image_list.put_nowait(frame)
+                    self.image_list_q.empty_and_put(frame)#self.image_list_q.put_nowait(frame) TODO ?
+                    print("11111111111111111111 Capture at: ", time.time())
                 discard_counter = discard_counter + 1
-                # self.image_list.put_nowait(input_image.get_frame())
 
     def end_process(self):
-        self.stop_signal.put_nowait(True)
+        self.stop_signal_q.put_nowait(True)
         time.sleep(1)  #TODO : change duration or remove!
         self.terminate()
         self.join()
