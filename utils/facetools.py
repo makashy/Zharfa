@@ -104,6 +104,7 @@ class DetectionProcess(Process):
             usable, item = self.input_q.empty_and_get()
             if usable:
                 print("22222222222222222222 Det starts at: ", time.time())
+                self.input_q.task_done()
                 frame = item
                 if frame is None:
                     self.output_q.empty_and_put(None)
@@ -124,6 +125,7 @@ class DetectionProcess(Process):
                                             
                     self.output_q.empty_and_put([frame, detection_result])
                     print("33333333333333333333 Det finishes at: ", time.time())
+                self.output_q.join()
 
     def end_process(self):
         self.stop_signal_q.put_nowait(True)
@@ -156,6 +158,7 @@ class IdentificationProcess(Process):
             usable, item = self.input_q.empty_and_get()
             if usable:
                 print("44444444444444444444 Iden starts at: ", time.time())
+                self.input_q.task_done()
                 if item is None:
                     self.output_q.empty_and_put(None)
                     print("5555555555555555555 Iden finishes at: ", time.time(), "NONEEEE")

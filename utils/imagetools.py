@@ -117,6 +117,7 @@ class InputImageProcess(Process):
                     discard_counter = 0
                     self.image_list_q.empty_and_put(frame)#self.image_list_q.put_nowait(frame) TODO ?
                     print("11111111111111111111 Capture at: ", time.time())
+                    self.image_list_q.join()
                 discard_counter = discard_counter + 1
 
     def end_process(self):
