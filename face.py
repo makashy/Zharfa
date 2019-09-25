@@ -11,9 +11,10 @@ from kivy.uix.recycleview import RecycleView
 
 from utils.databasetools import DataBase
 # import utils.debugtools
-from utils.facetools import DetectionProcess, IdentificationProcess
+from utils.facetools import DetectionProcess, IdentificationProcess, FaceEditionProcess
 from utils.imagetools import InputImageProcess
 from utils import gui
+from utils.chronometer import Chronometer
 
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 Config.set('kivy', 'window_icon', './images/facelogo010-01.png')
@@ -52,13 +53,15 @@ class ZharfaApp(App):
         self.counter = 0
         self.cm = None
         self.database = None
+        self.chronometer = Chronometer()
 
         self.input_process = InputImageProcess('images/Demo1.mkv',
                                                'images/Demo1.mkv',
                                                'images/Demo2.mp4')
 
         self.detection_process = DetectionProcess(DETECTOR_PATH, 0, self.input_process.image_list_q)
-        self.identification_process = IdentificationProcess(PREDICTOR_PATH, RECOGNIZER_PATH, 0, self.detection_process.output_q)
+        self.face_edition_process = FaceEditionProcess(PREDICTOR_PATH, 0, self.detection_process.output_q)
+        self.identification_process = IdentificationProcess(RECOGNIZER_PATH, 0, self.face_edition_process.output_q)
 
         self.timer = time.time()
         self.flag = 0
@@ -70,6 +73,7 @@ class ZharfaApp(App):
 
         self.input_process.start()
         self.detection_process.start()
+        self.face_edition_process.start()
         self.identification_process.start()
 
         return self.cm
@@ -103,7 +107,7 @@ class ZharfaApp(App):
         else:
             print("No detection at :", time.time())
 
-        print("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", time.time())
+        # print("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", time.time())
         texture = gui.get_kivy_texture(frame)
         self.cm.ids['camera'].color = (1, 1, 1, 1)
         self.cm.ids['camera'].texture = texture
@@ -118,23 +122,25 @@ class ZharfaApp(App):
         if self.cm.ids['play'].state is 'down':
             usable, item = self.identification_process.output_q.empty_and_get()
             if usable:
-                print("66666666666666666666 update starts at: ", time.time())
-                if item is None:
+                frame, result_list = item
+                # print("66666666666666666666 update starts at: ", time.time())
+                if frame is None:
                     self.cm.ids['play'].state = 'normal'
                     self.cm.ids['camera'].reload()
                     self.input_process.play_mode_q.empty_and_put(False)
                     # TODO: show a warning!
                 else:
-                    frame, result_list = item
+                    self.chronometer.start()
                     self.counter = self.counter + 1
                     correspondence_dict = self.update_save_database(result_list)
                     self.update_frame_viewer(result_list, frame, correspondence_dict)
-                    print("77777777777777777 update finishes at: ", time.time())
+                    print("D$$$$$$$$$$$ database: ", self.chronometer.average_elapsed())
 
     def on_stop(self):
 
-        self.input_process.end_process() 
+        self.input_process.end_process()
         self.detection_process.end_process()
+        self.face_edition_process.end_process()
         self.identification_process.end_process()
 
 
