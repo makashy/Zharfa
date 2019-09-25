@@ -4,6 +4,7 @@ import numpy as np
 import cv2  #pylint: disable=import-error
 from multiprocessing import JoinableQueue, Process
 from utils.advanced_queues import AdvancedQueue
+from utils.chronometer import Chronometer
 
 
 def open_cam_rtsp(uri, width, height, latency):
@@ -74,6 +75,7 @@ class InputImageProcess(Process):
         self.initial_source = initial_source
         self.demo1_address = demo1_address
         self.demo2_address = demo2_address
+        self.chronometer = Chronometer()
 
     def run(self):
         input_image = InputImage(self.initial_source, self.demo1_address, self.demo2_address)
@@ -107,18 +109,20 @@ class InputImageProcess(Process):
             if time.time() - timer > 1/input_fps and state:
                 timer = time.time()
                 frame_availability, frame = input_image.get_frame()
+                if discard_counter == 0:
+                    print("||||||||||||| InputImageProcess: ", time.time())
+                    self.image_list_q.empty_and_put(frame)#self.image_list_q.put_nowait(frame) TODO ?
+                    self.chronometer.start()
 
                 #TODO: remove:
                 if frame_availability is False:
                     print("No source")
 
-
+                discard_counter = discard_counter + 1
                 if discard_counter == frame_to_discard:
                     discard_counter = 0
-                    self.image_list_q.empty_and_put(frame)#self.image_list_q.put_nowait(frame) TODO ?
-                    print("11111111111111111111 Capture at: ", time.time())
+                    print("D|||||||||||| InputImageProcess: ", self.chronometer.average_elapsed())
                     self.image_list_q.join()
-                discard_counter = discard_counter + 1
 
     def end_process(self):
         self.stop_signal_q.put_nowait(True)
