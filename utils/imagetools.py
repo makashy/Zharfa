@@ -1,29 +1,52 @@
+""" Input Image Processing Module
+"""
 import time
 
 import numpy as np
-import cv2  #pylint: disable=import-error
-from multiprocessing import JoinableQueue, Process
-from utils.advanced_queues import AdvancedQueue
+
+import cv2  # pylint: disable=import-error
+import utils.tpi as tpi
 from utils.chronometer import Chronometer
 
+# def open_cam_rtsp(uri, width, height, latency):
+#     gst_str = ('rtspsrc location={} latency={} ! '\
+#                'rtph264depay ! h264parse ! omxh264dec ! '\
+#                'nvvidconv ! '\
+#                'video/x-raw, width=(int){}, height=(int){}' \
+#                'format=(string)BGRx ! '\
+#                'videoconvert ! appsink').format(uri, latency, width, height)
+#     return cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 
-def open_cam_rtsp(uri, width, height, latency):
-    gst_str = ('rtspsrc location={} latency={} ! '\
-               'rtph264depay ! h264parse ! omxh264dec ! '\
-               'nvvidconv ! '\
-              'video/x-raw, width=(int){}, height=(int){}' \
-               'format=(string)BGRx ! '\
-               'videoconvert ! appsink').format(uri, latency, width, height)
-    return cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 
+class InputImageProcess():
+    def __init__(self, communicator, initial_source, demo1_address,
+                 demo2_address):
+        self.comm = communicator
+        self.stop_buf = np.zeros(1)
+        self.stop_req = self.comm.Irecv(self.stop_buf,
+                                        source=tpi.GUI_PROCESS,
+                                        tag=tpi.STOP)
+        self.setting_req = self.comm.irecv(source=tpi.GUI_PROCESS,
+                                           tag=tpi.SETTING)
+        self.mode_req = self.comm.irecv(source=tpi.GUI_PROCESS, tag=tpi.MODE)
 
-class InputImage():
-    def __init__(self, initial_source, demo1_address, demo2_address):
+        self.play = False
         self.source = cv2.VideoCapture(initial_source)
         self.demo1_address = demo1_address
         self.demo2_address = demo2_address
         self.width = 1920
         self.height = 1080
+
+        self.timer = 0
+        self.input_fps = min(40, self.source.get(cv2.CAP_PROP_FPS))  #TODO
+        detection_fps = 80  #TODO
+        self.frames_to_discard = np.int(np.ceil(self.input_fps /
+                                                detection_fps))  #TODO
+        self.discard_counter = 0  #TODO
+
+        self.chronometer = Chronometer()
+        # self.frame = np.zeros([1080, 1920, 3], np.int8)
+        # self.test = self.comm.Send_init(self.frame, dest=tpi.GUI_PROCESS, tag=tpi.FRAME)
 
     def change_source(self, new_source, mode, camera_number, width, hight):
         self.width = int(width)
@@ -46,7 +69,10 @@ class InputImage():
             self.source = cv2.VideoCapture(self.demo2_address)
         debug = self.source.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.source.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        print('#######################', debug)  #TODO remove
+        print('#######################', debug, flush=True)  #TODO remove
+        print("*****************",
+              self.source.get(cv2.CAP_PROP_FPS),
+              flush=True)
 
     def get_frame(self):
         for _ in range(5):
@@ -58,75 +84,66 @@ class InputImage():
         # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return ret, frame
 
+    def flush_frame(self):
+        for _ in range(5):
+            ret, frame = self.source.read()
+            if ret:
+                break
+            time.sleep(0.002)
+        return ret, frame
+
     def do_with_timer(self, name='__str__', args=()):
         start_time = time.time_ns()
         result = self.__getattribute__(name)(*args)
         print(name + ": ", time.time_ns() - start_time)
         return result
 
-
-class InputImageProcess(Process):
-    def __init__(self, initial_source, demo1_address, demo2_address):
-        super().__init__()
-        self.source_info_q = AdvancedQueue(1)
-        self.image_list_q = AdvancedQueue(1)
-        self.play_mode_q = AdvancedQueue(1)
-        self.stop_signal_q = JoinableQueue(1)
-        self.initial_source = initial_source
-        self.demo1_address = demo1_address
-        self.demo2_address = demo2_address
-        self.chronometer = Chronometer()
-
     def run(self):
-        input_image = InputImage(self.initial_source, self.demo1_address, self.demo2_address)
-        input_fps = min(40, input_image.source.get(cv2.CAP_PROP_FPS)) #TODO
-        detection_fps = 2 #TODO
-        frame_to_discard = np.int(np.ceil(input_fps / detection_fps)) #TODO
-        discard_counter = 0 #TODO
-
-        timer = time.time()
-        state = False
+        """ The method representing the process's activity.
+        """
         while True:
-            ################################################################
-            if self.stop_signal_q.empty() is False:
-                input_image.source.release()
+            if self.stop_req.test()[0]:
+                self.source.release()
+                print("Input Image Process(#{}) Stopped".format(
+                    self.comm.Get_rank()),
+                      flush=True)
                 break
 
-            ################################################################
-            usable, item = self.source_info_q.empty_and_get()
-            if usable:
-                info = item
-                input_image.change_source(info[0], info[1], info[2], info[3],
-                                          info[4])
-                self.image_list_q.empty_out()
+            # Change source
+            data = self.setting_req.test()
+            if data[0]:
+                info = data[1][0]
+                self.change_source(info[0], info[1], info[2], info[3], info[4])
+                self.setting_req = self.comm.irecv(source=tpi.GUI_PROCESS,
+                                                   tag=tpi.SETTING)
+                print("Transfer time(Change source):",
+                      time.perf_counter() - data[1][1],
+                      flush=True)
 
-            ################################################################
-            usable, item = self.play_mode_q.empty_and_get()
-            if usable:
-                state = item
+            # Play Mode
+            data = self.mode_req.test()
+            if data[0]:
+                self.play = data[1][0]
+                self.mode_req = self.comm.irecv(source=tpi.GUI_PROCESS,
+                                                tag=tpi.MODE)
+                print("Transfer time(Play Mode):",
+                      time.perf_counter() - data[1][1],
+                      flush=True)
 
-            ################################################################
-            if time.time() - timer > 1/input_fps and state:
-                timer = time.time()
-                frame_availability, frame = input_image.get_frame()
-                if discard_counter == 0:
-                    print("||||||||||||| InputImageProcess: ", time.time())
-                    self.image_list_q.empty_and_put(frame)#self.image_list_q.put_nowait(frame) TODO ?
-                    self.chronometer.start()
+            # Reading images
+            if self.play:
+                frame_availability, frame = self.get_frame()
+                self.comm.Send(frame, dest=tpi.GUI_PROCESS, tag=tpi.FRAME
+                               )  # dest=tpi.DETECTION_PROCESS, tag=tpi.FRAME)
+            # if time.time() - self.timer > 1/self.input_fps and self.play:
+            #     self.timer = time.time()
+            #     if self.discard_counter == 0:
+            #         frame_availability, frame = self.get_frame()
+            #         self.comm.Isend(frame,  dest=tpi.GUI_PROCESS, tag=tpi.FRAME
+            #                         )# dest=tpi.DETECTION_PROCESS, tag=tpi.FRAME)
+            #     else:
+            #         self.flush_frame()
 
-                #TODO: remove:
-                if frame_availability is False:
-                    print("No source")
-
-                discard_counter = discard_counter + 1
-                if discard_counter == frame_to_discard:
-                    discard_counter = 0
-                    print("D|||||||||||| InputImageProcess: ", self.chronometer.average_elapsed())
-                    self.image_list_q.join()
-
-    def end_process(self):
-        self.stop_signal_q.put_nowait(True)
-        time.sleep(1)  #TODO : change duration or remove!
-        self.terminate()
-        self.join()
-        self.close()
+            #     self.discard_counter = self.discard_counter + 1
+            #     if self.discard_counter == self.frames_to_discard:
+            #         self.discard_counter = 0

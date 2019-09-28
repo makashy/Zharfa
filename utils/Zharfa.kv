@@ -62,7 +62,7 @@
         height: self.minimum_height
         orientation: 'vertical'
 
-<CameraClick>:
+<MainWindow>:
     # orientation: 'vertical'
 
     FloatLayout:
@@ -126,7 +126,7 @@
                     pos_hint: {'center': (.5, .5)}
                     text: 'Demo1'
                     values: 'Camera', 'IP Camera', 'Video', 'Demo1', 'Demo2'
-                    on_text: gui.check_source(self.text, app.cm)
+                    on_text: gui.check_source(self.text, app.main_window)
                 ToggleButton:
                     id: play
                     # size_hint: None, None
@@ -134,7 +134,7 @@
                     # center_x: self.parent.width/2
                     # top: self.parent.center_y - 5
                     text: 'Play'
-                    on_press: app.input_process.play_mode_q.empty_and_put(True if (self.state=="down") else False)
+                    on_press: app.change_input_mode(True if (self.state=="down") else False)
                 ToggleButton:
                     id: record
                     text: 'Record'
@@ -173,7 +173,7 @@
                     size_hint: None, 1
                     width: self.parent.width/6
                     text: 'Change'
-                    on_press: app.input_process.source_info_q.empty_and_put([source_address.text, source_mode.text, camera_number.text, width.text, height.text])
+                    on_press: app.change_input_setting([source_address.text, source_mode.text, camera_number.text, width.text, height.text])
 
             # image size
             BoxLayout:
