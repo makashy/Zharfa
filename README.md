@@ -1,3 +1,5 @@
+![logo](https://github.com/makashy/facerecognition/blob/master/images/facelogo09-01.png)
+
 # FaceRecognition
 
 ## INSTALL
