@@ -124,7 +124,6 @@ dmypy.json
 
 # folders
 /database
-/images
 /test
 /.vscode
 .pylintrc
